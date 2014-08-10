@@ -60,16 +60,16 @@ func (this *template) load(path, suffix string) error {
 			continue
 		}
 
-		// master
+		// content
+		paths = append(paths, filePath)
+
+		// base
 		for _, base := range this.bases {
 			if strings.HasPrefix(name, base["prefix"]) {
 				paths = append(paths, base["path"])
 				break
 			}
 		}
-
-		// content
-		paths = append(paths, filePath)
 
 		// template
 		t, err := ht.New(filepath.Base(paths[0])).Funcs(this.funcMap).ParseFiles(paths...)

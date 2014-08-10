@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"net/http"
+	"bytes"
 )
 
 type Controller struct {
@@ -42,6 +43,19 @@ func (c *Controller) RenderJson() bool {
 	b, _ := json.Marshal(c.Result)
 	c.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.Response.Write(b)
+	return false
+}
+
+func (c *Controller) RenderJsonP(callback string) bool {
+	if callback == "" {
+		callback = "callback"
+	}
+	b, _ := json.Marshal(c.Result)
+	buf := bytes.NewBufferString(callback)
+	buf.WriteString("(")
+	buf.Write(b)
+	buf.WriteString(")")
+	c.Response.Write(buf.Bytes())
 	return false
 }
 
