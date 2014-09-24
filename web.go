@@ -48,6 +48,10 @@ func (this *webHandle) NotFound(handle handleFunc) {
 	defaultHandler.notFound(handle)
 }
 
+func (this *webHandle) MethodNotAllowed(handle handleFunc) {
+	defaultHandler.methodNotAllowed(handle)
+}
+
 // web cookie
 type webCookie struct{}
 

@@ -8,17 +8,19 @@ import (
 
 // handler
 type handler struct {
-	mu           sync.Mutex
-	routes       map[string]*route
-	intercepts   []handleFunc
-	filters      []handleFunc
-	notFoundFunc handleFunc
+	mu                   sync.Mutex
+	routes               map[string]*route
+	intercepts           []handleFunc
+	filters              []handleFunc
+	notFoundFunc         handleFunc
+	methodNotAllowedFunc handleFunc
 }
 
 func newHandler() *handler {
 	handler := &handler{
-		routes:       make(map[string]*route),
-		notFoundFunc: notFound,
+		routes:               make(map[string]*route),
+		notFoundFunc:         notFound,
+		methodNotAllowedFunc: methodNotAllowed,
 	}
 	return handler
 }
@@ -26,18 +28,22 @@ func newHandler() *handler {
 // match request url path
 // If method is empty, support all method
 // It is GET, only support GET method
-func (this *handler) match(r *http.Request) (handleFunc, bool, bool) {
+func (this *handler) match(r *http.Request) (handleFunc, int, bool) {
 	method := r.Method
 	path := muxPath(strings.ToLower(r.URL.Path))
 	for pattern, route := range this.routes {
 		if route.isFile && strings.HasPrefix(path, pattern) {
-			return route.handle, true, true
+			return route.handle, http.StatusOK, true
 		}
-		if path == pattern && (route.method == "" || route.method == method) {
-			return route.handle, true, false
+		if path == pattern {
+			if route.method == "" || in(method, strings.ToUpper(route.method)) {
+				return route.handle, http.StatusOK, false
+			} else {
+				return route.handle, http.StatusMethodNotAllowed, false
+			}
 		}
 	}
-	return nil, false, false
+	return nil, http.StatusNotFound, false
 }
 
 // serve http
@@ -51,19 +57,23 @@ func (this *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// match
 	c := &Controller{r, w, make(map[string]interface{}), make(map[string]interface{})}
-	handle, ok, isFile := this.match(r)
+	handle, status, isFile := this.match(r)
 	if isFile {
 		handle(c)
 		return
 	}
-	if !ok {
+	if status == http.StatusNotFound {
 		this.notFoundFunc(c)
+		return
+	}
+	if status == http.StatusMethodNotAllowed {
+		this.methodNotAllowedFunc(c)
 		return
 	}
 
 	// intercept
 	for _, h := range this.intercepts {
-		if ok = h(c); ok {
+		if ok := h(c); ok {
 			return
 		}
 	}
@@ -75,7 +85,7 @@ func (this *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// filter
 	for _, h := range this.filters {
-		if ok = h(c); ok {
+		if ok := h(c); ok {
 			return
 		}
 	}
@@ -119,6 +129,12 @@ func (this *handler) static(pattern string, handle handleFunc) {
 func (this *handler) notFound(handle handleFunc) {
 	this.mu.Lock()
 	this.notFoundFunc = handle
+	this.mu.Unlock()
+}
+
+func (this *handler) methodNotAllowed(handle handleFunc) {
+	this.mu.Lock()
+	this.methodNotAllowedFunc = handle
 	this.mu.Unlock()
 }
 

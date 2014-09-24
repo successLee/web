@@ -18,8 +18,17 @@ func notFound(c *Controller) bool {
 	return false
 }
 
+func methodNotAllowed(c *Controller) bool {
+	http.Error(c.Response, http.ErrBodyNotAllowed.Error(), http.StatusMethodNotAllowed)
+	return false
+}
+
 func (c *Controller) NotFound() bool {
 	return notFound(c)
+}
+
+func (c *Controller) MethodNotAllowed() bool {
+	return methodNotAllowed(c)
 }
 
 func (c *Controller) Redirect(url string) bool {
@@ -47,15 +56,13 @@ func (c *Controller) RenderJson() bool {
 }
 
 func (c *Controller) RenderJsonP(callback string) bool {
-	if callback == "" {
-		callback = "callback"
-	}
+	buffer := bytes.NewBufferString("")
+	buffer.WriteString(callback)
+	buffer.WriteString("(")
 	b, _ := json.Marshal(c.Result)
-	buf := bytes.NewBufferString(callback)
-	buf.WriteString("(")
-	buf.Write(b)
-	buf.WriteString(")")
-	c.Response.Write(buf.Bytes())
+	buffer.Write(b)
+	buffer.WriteString(")")
+	c.Response.Write(buffer.Bytes())
 	return false
 }
 
@@ -88,6 +95,8 @@ func (c *Controller) DelCookie(name string) {
 	cookie := &http.Cookie{
 		Name:   name,
 		MaxAge: -1,
+		Path:   defaultCookieConfig.Path,
+		Domain: defaultCookieConfig.Domain,
 	}
 	http.SetCookie(c.Response, cookie)
 }
