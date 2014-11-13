@@ -15,12 +15,12 @@ type Controller struct {
 
 func notFound(c *Controller) bool {
 	http.NotFound(c.Response, c.Request)
-	return false
+	return true
 }
 
 func methodNotAllowed(c *Controller) bool {
 	http.Error(c.Response, http.ErrBodyNotAllowed.Error(), http.StatusMethodNotAllowed)
-	return false
+	return true
 }
 
 func (c *Controller) NotFound() bool {
@@ -33,7 +33,7 @@ func (c *Controller) MethodNotAllowed() bool {
 
 func (c *Controller) Redirect(url string) bool {
 	http.Redirect(c.Response, c.Request, url, http.StatusFound)
-	return false
+	return true
 }
 
 func (c *Controller) Render(name string) bool {

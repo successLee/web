@@ -74,6 +74,11 @@ func (this *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// intercept
 	for _, h := range this.intercepts {
 		if ok := h(c); ok {
+			for _, h := range this.filters {
+				if ok := h(c); ok {
+					return
+				}
+			}
 			return
 		}
 	}
